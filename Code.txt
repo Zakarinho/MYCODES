@@ -1,0 +1,170 @@
+// BLYNK APP CONTROL
+#define BLYNK_TEMPLATE_ID "TMPL2JAf4Qxqs"
+#define BLYNK_TEMPLATE_NAME "IOT BASED SMART DOORBEL CONTROLLING SYSTEM"
+#define BLYNK_AUTH_TOKEN "Um0OPs3b3BP9AAn6IvcOTKksg6ORwmpE"
+
+#define BLYNK_PRINT Serial
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+//#include <SimpleTimer.h>
+//SimpleTimer timer;
+#include <DHT.h>
+
+// LCD DISPLAY LIBRARY
+#include <LiquidCrystal_I2C.h> // library for I2C LCD  
+LiquidCrystal_I2C lcd(0x27, 16, 2); // set the LCD address to 0x27 for a 16 chars and 2 line display
+
+//lCD Diclarations
+//int SDA - Pin G21
+//int SCL - Pin G22
+// VCC - 5V INPUT SIDE
+// GND - GND
+//-----------------------
+#define VPIN_BUTTON_2    V2
+//-----------------------
+// Flame Sensor declarations
+int  LockRelay = 4;
+int  Motionpin = 17;
+bool pinValue = 0;
+int  LdrValue = 0;
+int firepin = 16;
+// Light Relay declarations
+//Temperature Sensor declarations
+// GND - GND ESP32
+// VCC + 3.3V ESP32
+int DHTPin = 15;          // What digital pin we're connected to
+#define Type DHT22     // DHT 11trol
+DHT dht(DHTPin, Type);
+float humidity;
+float tempC;
+float tempF;
+BlynkTimer timer;
+
+//BLYNK APP AND INTENET CONNECTIONS
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "Zaki";
+char pass[] = "12345678";
+
+//------------Indicators of the system -------
+int greenled_Pin = 14;
+int redled_Pin = 12;
+int BUZZER = 27;
+//-----------------------------------------
+int bushbell = 5;
+int buttonbell;
+int dt = 1000;
+
+int bushlock = 17;
+int buttonlock;
+
+void setup()
+{
+  // output indicators ------
+  pinMode(greenled_Pin, OUTPUT);
+  pinMode(redled_Pin, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  // Light outputs
+  // flame sensor inputs and outputs
+  pinMode(firepin, INPUT);
+  pinMode(bushbell, INPUT);
+  pinMode(bushlock, INPUT); // set arduino pin to output mode
+  pinMode(Motionpin, INPUT); // set arduino pin to input pull-up mode
+  pinMode(LockRelay, OUTPUT); // pump output pin
+  //other important setups
+  Serial.begin(9600);
+  //temperature fan output
+  //--------pinMode(DHTPin, INPUT);-------
+  //other importants
+  Blynk.begin(auth, ssid, pass);
+  lcd.begin();
+  lcd.backlight();
+  lcd.clear();
+  dht.begin();
+
+  lcd.setCursor(0, 0);
+  lcd.print("IOT DOORBELL LOCK &");
+  lcd.setCursor(0, 1);
+  lcd.print("MONITORING SYSTEM");
+  delay(5000);
+  lcd.clear();
+  timer.setInterval(100L, Motion_Sensor);
+  timer.setInterval(100L, Fire_Sensor);
+  //  timer.setInterval(1000L, ButtonDoorLock);
+  //  timer.setInterval(1000L, ButtonDoorBell);
+
+}
+
+//----------------------------------- First Function -----------------
+void Motion_Sensor() {
+  LdrValue = digitalRead(Motionpin);
+  Serial.println(LdrValue);
+  //int LdrReal = map(LdrValue, 0, 1, 1, 0);
+
+  if (LdrValue == 1) // change this data to 1 and do the magic
+  {
+    Blynk.logEvent("notifications", "Qof ayaa irida taagan");
+    //---------------conditions exchanging
+    digitalWrite(greenled_Pin, HIGH);
+    digitalWrite(redled_Pin, HIGH);
+    digitalWrite(BUZZER, HIGH);
+    delay(1000);
+    digitalWrite(redled_Pin, LOW);
+    digitalWrite(BUZZER, LOW);
+    delay(1000);
+
+  }
+  else // change data into 0 do nothing
+  {
+    digitalWrite(redled_Pin, LOW);
+    digitalWrite(BUZZER, LOW);
+    digitalWrite(greenled_Pin, HIGH);
+
+  }
+  Blynk.virtualWrite(V0, LdrValue); //display the moisture percent.
+}
+
+//----------------------------------- Third Function -----------------
+void Fire_Sensor()
+{
+  int doorState = digitalRead(firepin); // read state
+  int fIREReal = map(doorState, 0, 1, 1, 0);
+   Serial.println(fIREReal);
+  if (fIREReal == HIGH) {
+    Blynk.logEvent("fire", "Dab ayaa kacay");
+    digitalWrite(greenled_Pin, HIGH);
+    digitalWrite(redled_Pin, HIGH);
+    digitalWrite(BUZZER, HIGH);
+    delay(1000);
+    digitalWrite(redled_Pin, LOW);
+    digitalWrite(BUZZER, LOW);
+    delay(1000);
+
+  }
+  else {
+    digitalWrite(greenled_Pin, LOW);
+    digitalWrite(redled_Pin, LOW);
+    digitalWrite(BUZZER, LOW);
+  }
+  Blynk.virtualWrite(V1, fIREReal);
+}
+
+// -------------- Loop Operations --------------
+void loop()
+{
+  Blynk.run();
+  timer.run();
+}
+
+// funtion for on and off switches -- light -- lock -- fan
+
+// this is for Lock On and Off Switch
+BLYNK_WRITE(VPIN_BUTTON_2) {
+  int toggleState_2 = param.asInt();
+  if (toggleState_2 == 1) {
+    digitalWrite(LockRelay, LOW);
+  }
+  else {
+    digitalWrite(LockRelay, HIGH);
+  }
+}
